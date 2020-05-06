@@ -11,5 +11,10 @@ class Example(commands.Cog):
         response = "Nice, Ayy lmao"
         await ctx.send(response)
 
+    @commands.command()
+    async def whoami(self, ctx):
+        response = f"Hey there, {ctx.author.display_name}!"
+        await ctx.send(response)
+
 def setup(bot):
     bot.add_cog(Example(bot))
