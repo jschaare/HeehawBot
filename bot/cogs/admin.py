@@ -7,6 +7,7 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @commands.command(hidden=True)
+    @commands.has_permissions(administrator=True)
     async def shutdown(self, ctx):
         try:
             await ctx.send("Shutting down...")
@@ -15,6 +16,7 @@ class Admin(commands.Cog):
             await ctx.send(f"`{type(e).__name__}: {e}`")
 
     @commands.command(hidden=True)
+    @commands.has_permissions(administrator=True)
     async def load(self, ctx, *, module : str):
         try:
             self.bot.load_extension(module)
@@ -23,7 +25,8 @@ class Admin(commands.Cog):
         else:
             await ctx.send(f"Successfully loaded cog... `{module}`")
     
-    @commands.group(hidden=True)
+    @commands.command(hidden=True)
+    @commands.has_permissions(administrator=True)
     async def unload(self, ctx, *, module : str):
         try:
             self.bot.unload_extension(module)
@@ -33,6 +36,7 @@ class Admin(commands.Cog):
             await ctx.send(f"Successfully unloaded cog... `{module}`")
 
     @commands.group(name='reload', hidden=True, invoke_without_command=True)
+    @commands.has_permissions(administrator=True)
     async def _reload(self, ctx, *, module : str):
         try:
             self.bot.reload_extension(module)
