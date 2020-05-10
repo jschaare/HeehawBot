@@ -27,7 +27,7 @@ class Player(object):
             payload = requests.get(self.url)
             payload.raise_for_status()
         except Exception as e:
-            raise Exception
+            raise e
         return payload.text.split("\n")
 
     def _parse_payload(self, payload):
