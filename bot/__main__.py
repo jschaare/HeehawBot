@@ -8,5 +8,6 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 bot = Bot(command_prefix="~")
 bot.load_extension("bot.cogs.admin")
 bot.load_extension("bot.cogs.example")
+bot.load_extension("bot.cogs.osrs")
 
 bot.run(TOKEN)
