@@ -10,37 +10,6 @@ class Events(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def testwait(self, ctx, time):
-        now = datetime.today()
-        tz_str = now.astimezone().tzname()
-        eventtime = datetime.strptime(time, "%Yy%mm%dd%Hh%Mm")
-        if (eventtime < now):
-            await ctx.send("Error: time is in the past")
-            return
-        delta = eventtime - now
-        secs = delta.seconds
-
-        response = f"Hey there, {ctx.author.display_name}! sending a message at {eventtime} {tz_str}"
-        msg = await ctx.send(response)
-        e_check = "✅"
-        e_wc = "♿"
-        await msg.add_reaction(e_check)
-        await msg.add_reaction(e_wc)
-
-        await asyncio.sleep(secs)
-
-        msg = await ctx.channel.fetch_message(msg.id)
-        for react in msg.reactions:
-            if react.emoji == "✅":
-                users = await react.users().flatten()
-                for u in users:
-                    if not u.bot:
-                        await u.send("EAT MY ASS")
-        
-        await ctx.send("PEEEEEEEEEEEEE")
-        await ctx.message.delete()
-
-    @commands.command()
     async def event(self, ctx, event_name, event_time, *, event_str):
         #~event skrrrt 2020y10m22d19h55m this is a test message
         e_check = "✅"
