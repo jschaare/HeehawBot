@@ -15,5 +15,9 @@ class Bot(commands.Bot):
     async def on_ready(self):
         if not hasattr(self, 'uptime'):
             self.uptime = datetime.datetime.utcnow()
+            print(self.guilds)
+            for guild in self.guilds:
+                for channel in guild.text_channels:
+                    print(channel)
 
         print(f'Ready: {self.user} (ID: {self.user.id})')
