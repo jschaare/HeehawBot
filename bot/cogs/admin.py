@@ -7,7 +7,7 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @commands.command(hidden=True)
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def shutdown(self, ctx):
         try:
             await ctx.send("Shutting down...")
@@ -16,7 +16,7 @@ class Admin(commands.Cog):
             await ctx.send(f"`{type(e).__name__}: {e}`")
 
     @commands.command(hidden=True)
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def load(self, ctx, *, module : str):
         try:
             self.bot.load_extension(module)
@@ -26,7 +26,7 @@ class Admin(commands.Cog):
             await ctx.send(f"Successfully loaded cog... `{module}`")
     
     @commands.command(hidden=True)
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def unload(self, ctx, *, module : str):
         try:
             self.bot.unload_extension(module)
@@ -36,7 +36,7 @@ class Admin(commands.Cog):
             await ctx.send(f"Successfully unloaded cog... `{module}`")
 
     @commands.group(name='reload', hidden=True, invoke_without_command=True)
-    @commands.has_permissions(administrator=True)
+    @commands.is_owner()
     async def _reload(self, ctx, *, module : str):
         try:
             self.bot.reload_extension(module)
@@ -46,6 +46,7 @@ class Admin(commands.Cog):
             await ctx.send(f"Successfully reloaded cog... `{module}`")
 
     @_reload.command(name='all', hidden=True)
+    @commands.is_owner()
     async def _reload_all(self, ctx):
         try:
             cogs = self.bot.cogs
