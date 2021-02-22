@@ -1,9 +1,11 @@
 import os
-from dotenv import load_dotenv
+import json
 from bot.bot import Bot
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+with open("config.json") as f:
+    cfg = json.load(f)
+
+TOKEN = cfg["discord_token"]
 
 bot = Bot(command_prefix="~")
 bot.load_extension("bot.cogs.admin")
