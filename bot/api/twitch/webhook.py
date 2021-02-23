@@ -38,15 +38,40 @@ class DiscordTwitchWebhook():
                         wbhk = user_webhook[1]
                         break
                     else:
-                        wbhk = None
-                if wbhk == None:
-                    print(f"Failed to subscribe to {user['display_name']}")
-                    return
+                        print(f"Failed to subscribe to {user['display_name']}")
+                        return
                 ret, uuid = self.hook.subscribe_stream_changed(user['id'], self.callback_stream_changed)
                 if ret:
                     print(f"Subscribed to {user['display_name']}")
                     user['uuid'] = uuid
                     user['webhook'] = wbhk
+                    self.subscriptions.append(user)
+                else:
+                    print(f"Failed to subscribe to {user['display_name']}")
+    
+    def subscribe_users2(self, user_webhook_list):
+        if not self.authenticated:
+            raise Exception
+        #TODO handle exceptions
+        user_data = self.twitch.get_users(logins=[user_webhook[0] for user_webhook in user_webhook_list])
+        for user in user_data['data']:
+            if not any(sub['id'] == user['id'] for sub in self.subscriptions):
+                for user_webhook in user_webhook_list:
+                    if user['display_name'].lower() == user_webhook[0].lower():
+                        chan = user_webhook[1]
+                        call = user_webhook[2]
+                        loop = user_webhook[3]
+                        break
+                    else:
+                        print(f"Failed to subscribe to {user['display_name']}")
+                        return
+                ret, uuid = self.hook.subscribe_stream_changed(user['id'], self.callback_stream_changed2)
+                if ret:
+                    print(f"Subscribed to {user['display_name']}")
+                    user['uuid'] = uuid
+                    user['chan'] = chan
+                    user['call'] = call
+                    user['loop'] = loop
                     self.subscriptions.append(user)
                 else:
                     print(f"Failed to subscribe to {user['display_name']}")
@@ -76,6 +101,22 @@ class DiscordTwitchWebhook():
             emb = self.create_embed(twdata)
             loop = asyncio.get_event_loop()
             loop.create_task(self.post_discord(webhook_url, emb))
+
+    def callback_stream_changed2(self, uuid, twdata):
+        print('Callback for UUID ' + str(uuid))
+        print(twdata)
+        for user in self.subscriptions:
+            if user['uuid'] == uuid:
+                chan = user['chan']
+                call = user['call']
+                loop = user['loop']
+                break
+            else:
+                print("Callback failed")
+                return
+        if twdata['type'] == 'live':
+            emb = self.create_embed(twdata)
+            asyncio.run_coroutine_threadsafe(call(chan, emb), loop)
 
     def create_embed(self, twdata):
         return Embed(title=f"{twdata['user_name']}",

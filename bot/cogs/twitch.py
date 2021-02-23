@@ -3,6 +3,7 @@ from bot.bot import Bot
 from bot.utils import config
 from bot.api.twitch.webhook import DiscordTwitchWebhook
 from pyngrok import ngrok
+import asyncio
 
 class TwitchCog(commands.Cog):
     def __init__(self, bot):
@@ -36,12 +37,20 @@ class TwitchCog(commands.Cog):
         webhook_list = await ctx.message.channel.webhooks()
         for wbhk in webhook_list:
             if self.webhook_name == wbhk.name:
-                await ctx.send("test")
                 self.dtw.subscribe_users([(username, wbhk.url)])
                 await ctx.send(f"Subscribed to user: {username}")
                 return
 
         await ctx.send(f"Please create webhook: {self.webhook_name}")
+
+    @_twitch.command()
+    async def subscribe2(self, ctx, username : str):
+        self.dtw.subscribe_users2([(username, ctx.message.channel, self.post, asyncio.get_event_loop())])
+        await ctx.send(f"Subscribed to user: {username}")
+
+    async def post(self, chan, emb):
+        await chan.send(embed=emb)
+
 
 def setup(bot):
     bot.add_cog(TwitchCog(bot))
