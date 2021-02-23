@@ -1,83 +1,30 @@
 from discord.ext import commands
 from bot.bot import Bot
-
-from discord import Webhook, AsyncWebhookAdapter, Embed
-from twitchAPI.twitch import Twitch
-from twitchAPI.webhook import TwitchWebHook
-from twitchAPI.types import TwitchAuthorizationException
-import asyncio
-
-class DiscordTwitchWebhook():
-    def __init__(self, twitch_appid, twitch_secret, discord_webhook, callback_url):
-        self.twitch = Twitch(twitch_appid, twitch_secret)
-        self.discord_webhook = discord_webhook
-        self.callback_url = callback_url
-        self.hook = TwitchWebHook(callback_url, twitch_appid, 8080)
-        self.authenticated = False
-        self.subscriptions = []
-
-    def authenticate(self):
-        self.authenticated = False
-        try:
-            self.twitch.authenticate_app([])
-            self.hook.authenticate(self.twitch)
-        except TwitchAuthorizationException:
-            print("Twitch authentication failed")
-        except RuntimeError:
-            print("Webhook must be https")
-        else:
-            self.authenticated = True
-        return self.authenticated
-
-    def subscribe_users(self, user_list):
-        if not self.authenticated:
-            raise Exception
-        #TODO handle exceptions
-        user_data = self.twitch.get_users(logins=user_list)
-        for user in user_data['data']:
-            if not any(sub['id'] == user['id'] for sub in self.subscriptions):
-                ret, uuid = self.hook.subscribe_stream_changed(user['id'], self.callback_stream_changed)
-                if ret:
-                    print(f"Subscribed to {user['display_name']}")
-                    user['uuid'] = uuid
-                    self.subscriptions.append(user)
-                else:
-                    print(f"Failed to subscribe to {user['display_name']}")
-
-    def unsubscribe_users(self, user_list):
-        #TODO
-        return
-
-    def start(self):
-        self.hook.start()
-
-    def stop(self):
-        self.hook.unsubscribe_all(self.twitch)
-        self.hook.stop()
-
-    def callback_stream_changed(self, uuid, twdata):
-        print('Callback for UUID ' + str(uuid))
-        print(twdata)
-        if twdata['type'] == 'live':
-            emb = self.create_embed(twdata)
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.post_discord(self.discord_webhook, emb))
-
-    def create_embed(self, twdata):
-        return Embed(title=f"{twdata['user_name']}",
-                     description=f"{twdata['user_name']} is streaming {twdata['game_name']}! Get in here!",
-                     color=6570404,
-                     url=f"https://twitch.tv/{twdata['user_name']}") \
-                    .set_image(url=twdata['thumbnail_url'].format(width="1280", height="720"))
-
-    async def post_discord(self, discord_embed):
-        async with aiohttp.ClientSession() as session:
-            webhook = Webhook.from_url(webhook_url, adapter=AsyncWebhookAdapter(session))
-            await webhook.send(username=self.discord_username, embed=discord_embed)
+from bot.utils import config
+from bot.api.twitch.webhook import DiscordTwitchWebhook
+from pyngrok import ngrok
 
 class TwitchCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.webhook_name = "Twitch Notification"
+
+        cfg = config.get_config()
+        callback_url = ngrok.connect(cfg['ngrok_port']).public_url
+
+        self.callback_url = callback_url.replace('http', 'https')
+        print(self.callback_url)
+        print(cfg['twitch_appid'])
+        self.dtw = DiscordTwitchWebhook(cfg['twitch_appid'], cfg['twitch_secret'], self.callback_url)
+        self._startup()
+
+    def _startup(self):
+        self.dtw.authenticate()
+        self.dtw.start()
+
+    def _shutdown(self):
+        self.dtw.stop()
+        ngrok.disconnect(self.callback_url)
 
     @commands.group(name='twitch', invoke_without_command=True)
     async def _twitch(self, ctx):
@@ -85,9 +32,16 @@ class TwitchCog(commands.Cog):
         await ctx.send("Nice.")
 
     @_twitch.command()
-    async def whoami(self, ctx):
-        response = f"Hey there, {ctx.author.display_name}!"
-        await ctx.send(response)
+    async def subscribe(self, ctx, username : str):
+        webhook_list = await ctx.message.channel.webhooks()
+        for wbhk in webhook_list:
+            if self.webhook_name == wbhk.name:
+                await ctx.send("test")
+                self.dtw.subscribe_users([(username, wbhk.url)])
+                await ctx.send(f"Subscribed to user: {username}")
+                return
+
+        await ctx.send(f"Please create webhook: {self.webhook_name}")
 
 def setup(bot):
     bot.add_cog(TwitchCog(bot))

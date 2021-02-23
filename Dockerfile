@@ -5,10 +5,10 @@ RUN apk add --no-cache git make build-base linux-headers
 
 WORKDIR /heehawbot
 
-COPY config.json ./config.json
 COPY requirements.txt ./requirements.txt
-COPY ./bot ./bot
-
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY config.json ./config.json
+COPY ./bot ./bot
 
 CMD ["python", "-m", "bot"]
