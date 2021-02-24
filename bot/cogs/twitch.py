@@ -34,11 +34,6 @@ class TwitchCog(commands.Cog):
 
     @_twitch.command()
     async def subscribe(self, ctx, username : str):
-        self.dtw.subscribe_users([(username, ctx.message.channel, self.post, asyncio.get_event_loop())])
-        await ctx.send(f"Subscribed to user: {username}")
-
-    @_twitch.command()
-    async def sub(self, ctx, username : str):
         user = DiscordTwitchCallback(username, ctx.message.channel, self.post, asyncio.get_event_loop())
         self.dtw.subscribe_user(user)
         await ctx.send(f"Subscribed to user: {username}")

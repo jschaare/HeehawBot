@@ -23,8 +23,6 @@ class DiscordTwitchCallback():
     def run_callback(self, discord_embed):
         asyncio.run_coroutine_threadsafe(self.callback(self.channel, discord_embed), self.loop)
 
-    #TODO make equals stuff, store twitch json, make function to do callback
-
 class DiscordTwitchWebhook():
     def __init__(self, twitch_appid, twitch_secret, callback_url):
         self.discord_username = "Twitch Notification"
@@ -46,52 +44,23 @@ class DiscordTwitchWebhook():
         else:
             self.authenticated = True
         return self.authenticated
-    
-    def subscribe_users(self, user_add_list):
-        #TODO clean this awful code lmao
-
-        if not self.authenticated:
-            raise Exception
-        #TODO handle exceptions
-        user_data = self.twitch.get_users(logins=[user_callback[0] for user_callback in user_add_list])
-        for user in user_data['data']:
-            if not any(sub['id'] == user['id'] for sub in self.subscriptions):
-                for user_callback in user_add_list:
-                    if user['display_name'].lower() == user_callback[0].lower():
-                        chan = user_callback[1]
-                        call = user_callback[2]
-                        loop = user_callback[3]
-                        break
-                    else:
-                        print(f"Failed to subscribe to {user['display_name']}")
-                        return
-                ret, uuid = self.hook.subscribe_stream_changed(user['id'], self.callback_stream_changed)
-                if ret:
-                    print(f"Subscribed to {user['display_name']}")
-                    user['uuid'] = uuid
-                    user['chan'] = chan
-                    user['call'] = call
-                    user['loop'] = loop
-                    self.subscriptions.append(user)
-                else:
-                    print(f"Failed to subscribe to {user['display_name']}")
 
     def subscribe_user(self, user : DiscordTwitchCallback):
         if not self.authenticated:
             raise Exception
-        #TODO handle exceptions
+        #TODO handle more exceptions
         
         user_data = self.twitch.get_users(logins=[user.username])
         user.data = user_data['data'][0]
         user.id = user.data['id']
         if user not in self.subscriptions:
-            ret, user.uuid = self.hook.subscribe_stream_changed(user.id, self.callback_stream_changed2)
+            ret, user.uuid = self.hook.subscribe_stream_changed(user.id, self.callback_stream_changed)
             if ret:
                 self.subscriptions.append(user)
             else:
                 print(f"Failed to subscribe to {user.username}")
 
-    def unsubscribe_users(self, user_list):
+    def unsubscribe_user(self, user : DiscordTwitchCallback):
         #TODO
         return
 
@@ -103,20 +72,7 @@ class DiscordTwitchWebhook():
         self.hook.stop()
 
     def callback_stream_changed(self, uuid, twdata):
-        print('Callback for UUID ' + str(uuid))
-        print(twdata)
-        user = next((user for user in self.subscriptions if user['uuid'] == uuid), None)
-        if user == None:
-            print("Callback failed")
-            return
-        if twdata['type'] == 'live':
-            emb = self.create_embed(twdata)
-            call = user['call']
-            asyncio.run_coroutine_threadsafe(call(user['chan'], emb), user['loop'])
-    
-    def callback_stream_changed2(self, uuid, twdata):
-        print('Callback for UUID ' + str(uuid))
-        print(twdata)
+        print('Callback for UUID ' + str(uuid), twdata)
         user = next((user for user in self.subscriptions if user.uuid == uuid), None)
         if user == None:
             print("Callback failed")
