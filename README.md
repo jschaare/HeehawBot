@@ -2,11 +2,11 @@
 
 ## Running
 1. Copy config.json.example to config.json, and then add your tokens
-2. Install required packages with `pip install -r requirements.txt`
-3. Run the bot with `python -m bot`
+2. Create virtual environment and activate
+3. Install required packages with `pip install -r requirements.txt`
+4. Run the bot with `python -m heehawbot`
 
 ## Docker
-Docker is a great way to run the bot in a contained environment.
 ```
 #Build and run
 docker-compose up -d --build
