@@ -1,6 +1,5 @@
-git+https://github.com/Rapptz/discord.py@master
-requests
-asyncio
-aiohttp
-twitchAPI
-pyngrok
+discord.py==1.7.3
+black
+pylint
+dateparser
+git+git://github.com/jschaare/osrs-py.git
