@@ -7,7 +7,12 @@ cfg = config.get_config()
 
 TOKEN = cfg["discord_token"]
 
-coglist = ["heehawbot.cogs.admin", "heehawbot.cogs.poll", "heehawbot.cogs.osrs"]
+coglist = [
+    "heehawbot.cogs.admin",
+    "heehawbot.cogs.poll",
+    "heehawbot.cogs.osrs",
+    "heehawbot.cogs.music",
+]
 
 bot = HeehawBot(command_prefix="~", intents=discord.Intents.all())
 load_cogs(bot, coglist)
