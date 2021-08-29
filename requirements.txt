@@ -1,5 +1,8 @@
-discord.py==1.7.3
 black
-pylint
 dateparser
+discord.py==1.7.3
+pip-chill
+pylint
+pynacl
+youtube-dl
 git+git://github.com/jschaare/osrs-py.git
