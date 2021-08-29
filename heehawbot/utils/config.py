@@ -1,5 +1,6 @@
 import json
 
+
 def get_config():
     try:
         with open("config.json") as f:

@@ -1,5 +1,9 @@
+# Cog Stub
+
+For when you don't feel like looking for a super basic cog
+
+```
 from discord.ext import commands
-from bot.bot import Bot
 
 class Example(commands.Cog):
 
@@ -18,3 +22,4 @@ class Example(commands.Cog):
 
 def setup(bot):
     bot.add_cog(Example(bot))
+```
