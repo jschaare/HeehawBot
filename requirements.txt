@@ -2,7 +2,7 @@ black
 dateparser
 discord.py==1.7.3
 pip-chill
-pylint
-pynacl
-youtube-dl
+pylint==2.8.3
+pynacl==1.4.0
+youtube-dl==2021.6.6
 git+git://github.com/jschaare/osrs-py.git
