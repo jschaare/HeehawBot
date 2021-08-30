@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.8.5-alpine
 
 RUN apk update && apk upgrade
 RUN apk add --no-cache git make build-base linux-headers libffi-dev
