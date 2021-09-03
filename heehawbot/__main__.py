@@ -14,7 +14,7 @@ coglist = [
     "heehawbot.cogs.music",
 ]
 
-bot = HeehawBot(command_prefix="~", intents=discord.Intents.all())
+bot = HeehawBot(command_prefix="-", intents=discord.Intents.all())
 load_cogs(bot, coglist)
 
 bot.run(TOKEN)
