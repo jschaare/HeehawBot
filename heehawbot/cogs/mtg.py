@@ -8,39 +8,62 @@ class Mtg(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
-    @commands.group(name='mtg', invoke_without_command=True)
+    @commands.group(name="mtg", invoke_without_command=True)
     async def _mtg(self, ctx: Context):
-        await ctx.send('mtg: No subcommand found...')
+        await ctx.send("mtg: No subcommand found...")
 
     @_mtg.command()
     async def card(self, ctx: Context, *search_text: str):
-        search_text = ' '.join(search_text)
-        data = requests.get(f'https://api.scryfall.com/cards/search?q={search_text}').json().get('data')
+        search_text = " ".join(search_text)
+        data = (
+            requests.get(f"https://api.scryfall.com/cards/search?q={search_text}")
+            .json()
+            .get("data")
+        )
         embed = self._card_embed(data)
         await ctx.send(embed=embed)
 
     def _card_embed(self, data: dict) -> Embed:
-        embed = (
-            Embed(colour=0x00FF00, title='MTG Card Lookup')
-        )
+        embed = Embed(colour=0x00FF00, title="MTG Card Lookup")
         try:
-            card_names, set_names, rarities, legalities = list(zip(*[[card.get('name'), card.get('set_name'), ':no_entry:' if 'not' in card.get('legalities', {}).get('standard') else ':white_check_mark:'] for card in data]))
-            embed.add_field(name='***Card Name***', value='\n'.join(card_names))
-            embed.add_field(name='***Set Name***', value='\n'.join(set_names))
-            embed.add_field(name='***Standard Legal***', value='\n'.join(legalities))
+            card_names, set_names, rarities, legalities = list(
+                zip(
+                    *[
+                        [
+                            card.get("name"),
+                            card.get("set_name"),
+                            ":no_entry:"
+                            if "not" in card.get("legalities", {}).get("standard")
+                            else ":white_check_mark:",
+                        ]
+                        for card in data
+                    ]
+                )
+            )
+            embed.add_field(name="***Card Name***", value="\n".join(card_names))
+            embed.add_field(name="***Set Name***", value="\n".join(set_names))
+            embed.add_field(name="***Standard Legal***", value="\n".join(legalities))
             if len(data) == 1:
                 [card] = data
                 # Handle double-faced cards with thumbnail for now
-                if card.get('card_faces'):
-                    embed.set_image(url=card.get('card_faces')[0].get('image_uris', {}).get('large'))
-                    embed.set_thumbnail(url=card.get('card_faces')[1].get('image_uris', {}).get('large'))
+                if card.get("card_faces"):
+                    embed.set_image(
+                        url=card.get("card_faces")[0].get("image_uris", {}).get("large")
+                    )
+                    embed.set_thumbnail(
+                        url=card.get("card_faces")[1].get("image_uris", {}).get("large")
+                    )
                 else:
-                    embed.set_image(url=card.get('image_uris', {}).get('large'))
+                    embed.set_image(url=card.get("image_uris", {}).get("large"))
         except Exception as e:
             embed.clear_fields()
-            embed.add_field(name='***Error***', value=f'No cards found by search text: "{search_text}"')
+            embed.add_field(
+                name="***Error***",
+                value=f'No cards found by search text: "{search_text}"',
+            )
         finally:
             return embed
+
 
 def setup(bot):
     bot.add_cog(Mtg(bot))
