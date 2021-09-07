@@ -4,5 +4,6 @@ discord.py==1.7.3
 pip-chill
 pylint==2.8.3
 pynacl==1.4.0
+requests
 youtube-dl==2021.6.6
 git+git://github.com/jschaare/osrs-py.git

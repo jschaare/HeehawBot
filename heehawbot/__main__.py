@@ -10,11 +10,12 @@ TOKEN = cfg["discord_token"]
 coglist = [
     "heehawbot.cogs.admin",
     "heehawbot.cogs.poll",
+    "heehawbot.cogs.mtg",
     "heehawbot.cogs.osrs",
     "heehawbot.cogs.music",
 ]
 
-bot = HeehawBot(command_prefix="~", intents=discord.Intents.all())
+bot = HeehawBot(command_prefix="-", intents=discord.Intents.all())
 load_cogs(bot, coglist)
 
 bot.run(TOKEN)
