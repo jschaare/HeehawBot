@@ -24,45 +24,54 @@ class Mtg(Cog):
         await ctx.send(embed=embed)
 
     def _card_embed(self, data: dict) -> Embed:
-        embed = Embed(colour=0x00FF00, title="MTG Card Lookup")
-        try:
-            card_names, set_names, rarities, legalities = list(
-                zip(
-                    *[
-                        [
-                            card.get("name"),
-                            card.get("set_name"),
-                            ":no_entry:"
-                            if "not" in card.get("legalities", {}).get("standard")
-                            else ":white_check_mark:",
-                        ]
-                        for card in data
-                    ]
-                )
-            )
-            embed.add_field(name="***Card Name***", value="\n".join(card_names))
-            embed.add_field(name="***Set Name***", value="\n".join(set_names))
-            embed.add_field(name="***Standard Legal***", value="\n".join(legalities))
-            if len(data) == 1:
-                [card] = data
-                # Handle double-faced cards with thumbnail for now
-                if card.get("card_faces"):
-                    embed.set_image(
-                        url=card.get("card_faces")[0].get("image_uris", {}).get("large")
-                    )
-                    embed.set_thumbnail(
-                        url=card.get("card_faces")[1].get("image_uris", {}).get("large")
-                    )
-                else:
-                    embed.set_image(url=card.get("image_uris", {}).get("large"))
-        except Exception as e:
-            embed.clear_fields()
+        if not data:
+            embed = Embed(colour=0xFF0000, title="MTG Card Lookup")
             embed.add_field(
-                name="***Error***",
-                value=f'No cards found by search text: "{search_text}"',
+                name="***404***",
+                value=f"No cards found.",
             )
-        finally:
-            return embed
+        else:
+            embed = Embed(colour=0x00FF00, title="MTG Card Lookup")
+            try:
+                card_names, set_names, legalities = list(
+                    zip(
+                        *[
+                            [
+                                card.get("name"),
+                                card.get("set_name"),
+                                ":no_entry:"
+                                if "not" in card.get("legalities", {}).get("standard")
+                                else ":white_check_mark:",
+                            ]
+                            for card in data
+                        ]
+                    )
+                )
+                embed.add_field(name="***Card Name***", value="\n".join(card_names))
+                embed.add_field(name="***Set Name***", value="\n".join(set_names))
+                embed.add_field(
+                    name="***Standard Legal***", value="\n".join(legalities)
+                )
+                if len(data) == 1:
+                    [card] = data
+                    # Handle double-faced cards with thumbnail for now
+                    if card.get("card_faces"):
+                        embed.set_image(
+                            url=card.get("card_faces")[0]
+                            .get("image_uris", {})
+                            .get("large")
+                        )
+                        embed.set_thumbnail(
+                            url=card.get("card_faces")[1]
+                            .get("image_uris", {})
+                            .get("large")
+                        )
+                    else:
+                        embed.set_image(url=card.get("image_uris", {}).get("large"))
+            except Exception as e:
+                embed.clear_fields()
+                embed.add_field(name="***Error***", value=repr(e))
+        return embed
 
 
 def setup(bot):
