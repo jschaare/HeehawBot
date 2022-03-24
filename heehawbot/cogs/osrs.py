@@ -1,16 +1,18 @@
 from discord import Embed
-from discord.ext import commands
 from discord.ext.commands import Bot, Cog, Context
+from discord.commands import SlashCommandGroup
 from osrs.highscores import Player
+
+from heehawbot.utils import config
+
+guild_ids = config.get_config()["guilds"]
 
 
 class Osrs(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
-    @commands.group(name="osrs", invoke_without_command=True)
-    async def _osrs(self, ctx: Context):
-        await ctx.send("osrs: No subcommand found...")
+    _osrs = SlashCommandGroup("osrs", "osrs commands", guild_ids=guild_ids)
 
     @_osrs.command()
     async def highscore(self, ctx: Context, username: str):
@@ -20,7 +22,7 @@ class Osrs(Cog):
         except Exception as e:
             self.bot.logger.error(f"`{type(e).__name__}: {e}`")
         else:
-            await ctx.send(embed=embed)
+            await ctx.respond(embed=embed)
 
     def _player_embed(self, p: Player):
         # TODO: generate image of highscores rather than stupid text

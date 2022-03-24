@@ -1,9 +1,10 @@
-black
-dateparser
-discord.py==1.7.3
-pip-chill
+black==21.6b0
+dateparser==1.0.0
+ffmpeg-python==0.2.0
+imageio-ffmpeg==0.4.5
+numpy==1.22.3
+git+git://github.com/jschaare/osrs-py.git
+py-cord==2.0.0b5
 pylint==2.8.3
 pynacl==1.4.0
-requests
-youtube-dl==2021.6.6
-git+git://github.com/jschaare/osrs-py.git
+youtube-dl==2021.12.17

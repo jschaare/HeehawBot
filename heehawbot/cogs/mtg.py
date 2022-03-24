@@ -1,19 +1,21 @@
 from discord import Embed
-from discord.ext import commands
+from discord.commands import SlashCommandGroup
 from discord.ext.commands import Bot, Cog, Context
 import requests
+
+from heehawbot.utils import config
+
+guild_ids = config.get_config()["guilds"]
 
 
 class Mtg(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
-    @commands.group(name="mtg", invoke_without_command=True)
-    async def _mtg(self, ctx: Context):
-        await ctx.send("mtg: No subcommand found...")
+    _mtg = SlashCommandGroup("mtg", "mtg commands", guild_ids=guild_ids)
 
     @_mtg.command()
-    async def card(self, ctx: Context, *search_text: str):
+    async def card(self, ctx: Context, search_text: str):
         search_text = " ".join(search_text)
         data = (
             requests.get(f"https://api.scryfall.com/cards/search?q={search_text}")
@@ -21,7 +23,7 @@ class Mtg(Cog):
             .get("data")
         )
         embed = self._card_embed(data)
-        await ctx.send(embed=embed)
+        await ctx.respond(embed=embed)
 
     def _card_embed(self, data: dict) -> Embed:
         if not data:

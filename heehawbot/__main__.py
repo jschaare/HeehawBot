@@ -8,8 +8,8 @@ cfg = config.get_config()
 TOKEN = cfg["discord_token"]
 
 coglist = [
-    "heehawbot.cogs.admin",
-    "heehawbot.cogs.poll",
+    # "heehawbot.cogs.admin",
+    # "heehawbot.cogs.poll",
     "heehawbot.cogs.mtg",
     "heehawbot.cogs.osrs",
     "heehawbot.cogs.music",

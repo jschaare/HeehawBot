@@ -4,7 +4,8 @@ import discord
 from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import Bot, Cog, Context
-from datetime import timedelta
+
+from heehawbot.utils import config
 
 YTDL_OPTS = {
     "default_search": "ytsearch",
@@ -13,6 +14,8 @@ YTDL_OPTS = {
 }
 
 FFMPEG_OPTS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+
+guild_ids = config.get_config()["guilds"]
 
 
 class YoutubeVideo:
@@ -38,7 +41,7 @@ class YoutubeVideo:
         if self.thumbnail:
             emb.set_thumbnail(url=self.thumbnail)
         emb.set_footer(
-            text=f"Queued by {self.user.name}", icon_url=self.user.avatar_url
+            text=f"Queued by {self.user.name}", icon_url=self.user.avatar.url
         )
         return emb
 
@@ -86,7 +89,8 @@ class Music(Cog):
 
         vc.play(source, after=cleanup)
 
-    @commands.command(aliases=["p"])
+    # @commands.command(aliases=["p"])
+    @commands.slash_command(guild_ids=guild_ids)
     @commands.guild_only()
     async def play(self, ctx, *, url):
         vc = ctx.guild.voice_client
@@ -99,7 +103,7 @@ class Music(Cog):
                 self.bot.logger.error(f"`{type(e).__name__}: {e}`")
                 return
             manager.playlist.append(video)
-            msg = await ctx.send(embed=video.embed())
+            msg = await ctx.respond(embed=video.embed())
         else:
             if ctx.author.voice is not None and ctx.author.voice.channel is not None:
                 chan = ctx.author.voice.channel
@@ -110,19 +114,23 @@ class Music(Cog):
                     return
                 vc = await chan.connect()
                 self._play(vc, manager, video)
-                msg = await ctx.send(embed=video.embed())
+                msg = await ctx.respond(embed=video.embed())
             else:
                 self.bot.logger.error("User must be in a voice channel")
                 return
 
-    @commands.command(aliases=["n"])
+    # @commands.command(aliases=["n"])
+    @commands.slash_command(guild_ids=guild_ids)
     @commands.check(in_voice)
     @commands.guild_only()
     async def skip(self, ctx):
         vc = ctx.guild.voice_client
         vc.stop()
+        msg = await ctx.respond("Skipped song...")
+        await msg.delete_original_message(delay=1)
 
-    @commands.command()
+    # @commands.command()
+    @commands.slash_command(guild_ids=guild_ids)
     @commands.check(in_voice)
     @commands.guild_only()
     async def clear(self, ctx):
@@ -132,7 +140,11 @@ class Music(Cog):
         vc = ctx.guild.voice_client
         vc.stop()
 
-    @commands.command()
+        msg = await ctx.respond("Cleared playlist...")
+        await msg.delete_original_message(delay=1)
+
+    # @commands.command()
+    @commands.slash_command(guild_ids=guild_ids)
     @commands.guild_only()
     async def queue(self, ctx):
         manager = self._get_manager(ctx.guild)
@@ -140,9 +152,9 @@ class Music(Cog):
             msg = "Queue:\n"
             for i, song in enumerate(manager.playlist):
                 msg += f"{i+1}: {song.title}\n"
-            await ctx.send(msg)
+            await ctx.respond(msg)
         else:
-            await ctx.send("No songs in queue...")
+            await ctx.respond("No songs in queue...")
 
 
 def setup(bot):
