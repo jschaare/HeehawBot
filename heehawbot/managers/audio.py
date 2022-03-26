@@ -46,8 +46,14 @@ class YTDLSource(discord.PCMVolumeTransformer):
         filename = data["url"] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTS), data=data)
 
-    def embed(self):
-        emb = Embed(title=self.title, description=self.uploader, url=self.url)
+    def embed(self, is_playing=False):
+        if is_playing:
+            colour = 0x00FF00
+        else:
+            colour = 0x0
+        emb = Embed(
+            title=self.title, description=self.uploader, url=self.url, colour=colour
+        )
         if self.thumbnail:
             emb.set_thumbnail(url=self.thumbnail)
         return emb
@@ -78,8 +84,11 @@ class GuildPlayerView(discord.ui.View):
         self.clear_items()
         self.add_item(GuildPlayerButton(self.skip, label="skip"))
         self.add_item(
+            GuildPlayerButton(self.clear, label="clear", style=discord.ButtonStyle.red)
+        )
+        self.add_item(
             GuildPlayerButton(
-                self.clear, label="clear", style=discord.ButtonStyle.danger
+                self.queue, label="queue", style=discord.ButtonStyle.green
             )
         )
 
@@ -90,6 +99,25 @@ class GuildPlayerView(discord.ui.View):
         await self.manager.clear(
             interaction.guild_id, interaction.user.id, interaction.channel_id
         )
+
+    async def queue(self, button: GuildPlayerButton, interaction: discord.Interaction):
+        q = await self.manager.queue(
+            interaction.guild_id, interaction.user.id, interaction.channel_id
+        )
+        # TODO: MAKE QUEUE EMBED OBJ
+        song_str = "Songs:\n"
+        if len(q) > 0:
+            for n in range(len(q)):
+                i = q[n]
+                url = i.get("url")
+                title = i.get("title")
+                if len(title) > 50:
+                    title = title[:47] + "..."
+                song_str += f"{n}. [{title}]({url})\n"
+        else:
+            song_str += "Nothing in queue!"
+        e = Embed(title="Coming Up", description=song_str)
+        await interaction.response.send_message(embed=e, ephemeral=True)
 
 
 class GuildPlayer:
@@ -109,8 +137,10 @@ class GuildPlayer:
 
         self.volume = 1.0
         self.playlist = asyncio.Queue()
+        self.playlist_helper = []
         self.next = asyncio.Event()
-        self.playing = None
+        self.playing_now = None
+        self.playing_last = None
 
         self.view = view
         self.view_msg = None
@@ -126,6 +156,7 @@ class GuildPlayer:
         for _ in range(self.playlist.qsize()):
             self.playlist.get_nowait()
             self.playlist.task_done()
+        self.playlist_helper.clear()
         self.vclient.cleanup()
         await self.vclient.disconnect()
 
@@ -136,7 +167,9 @@ class GuildPlayer:
             self.next.clear()
 
             src = await self.get_song()
-            self.playing = src
+            self.playing_last = self.playing_now
+            self.playing_now = src
+
             self.vclient = self.guild.voice_client
             if not self.vclient:
                 return await self.cleanup()
@@ -151,10 +184,12 @@ class GuildPlayer:
                 await self.cleanup()
 
     async def update_view_msg(self):
-        await self.cleanup_view_msg()
+        if self.view_msg:
+            if self.playing_last:
+                await self.view_msg.edit(embed=self.playing_last.embed(), view=None)
         await self.view.load()
         self.view_msg = await self.tchan.send(
-            embed=self.playing.embed(), view=self.view
+            embed=self.playing_now.embed(is_playing=True), view=self.view
         )
 
     async def cleanup_view_msg(self):
@@ -170,6 +205,7 @@ class GuildPlayer:
             self.bot.logger.error(f"`{type(e).__name__}: {e}`")
             return
         await self.playlist.put(ytdlsrc)
+        self.playlist_helper.append({"title": ytdlsrc.title, "url": ytdlsrc.url})
         return ytdlsrc
 
     async def get_song(self, has_timeout=True):
@@ -179,7 +215,19 @@ class GuildPlayer:
                 src = await self.playlist.get()
         else:
             src = self.playlist.get_nowait()
+        self.playlist_helper.pop(0)
         return src
+
+    async def get_queue(self):
+        """q = []
+        count = 0
+        for song in self.playlist_helper:
+            q.append({"title": song.title, "url": song.url})
+            count += 1
+            if count >= 10:
+                return q
+        return q"""
+        return self.playlist_helper[:10]
 
 
 class AudioManager:
@@ -190,7 +238,6 @@ class AudioManager:
     def get_player(
         self, guild: discord.Guild, channel: discord.TextChannel
     ) -> GuildPlayer:
-        print(guild.name, channel.name)
         if guild.id in self.players:
             return self.players[guild.id]
 
@@ -208,6 +255,7 @@ class AudioManager:
         return vclient
 
     async def play(self, guild_id, user_id, tchannel_id, query):
+        # TODO: cleanup
         guild: discord.Guild = self.bot.get_guild(guild_id)
         if not guild:
             return
@@ -233,6 +281,23 @@ class AudioManager:
             song = await player.put_song(query)
             return song.embed()
 
+    async def queue(self, guild_id, user_id, tchannel_id):
+        guild: discord.Guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return
+
+        member = guild.get_member(user_id)
+        if not member:
+            return
+
+        tchannel = guild.get_channel(tchannel_id)
+        if not tchannel:
+            return
+
+        if isinstance(tchannel, discord.TextChannel):
+            player = self.get_player(guild, tchannel)
+            return await player.get_queue()
+
     async def skip(self, guild_id, user_id):
         guild: discord.Guild = self.bot.get_guild(guild_id)
         if not guild:
@@ -256,10 +321,6 @@ class AudioManager:
 
         vchannel = member.voice.channel
         if not vchannel:
-            return
-
-        vclient = await self.join(guild, vchannel)
-        if not vclient:
             return
 
         tchannel = guild.get_channel(tchannel_id)

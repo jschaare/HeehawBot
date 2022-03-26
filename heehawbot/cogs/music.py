@@ -1,160 +1,55 @@
-import asyncio
-import youtube_dl as ytdl
-import discord
-from discord import Embed
+from discord import Embed, Option
 from discord.ext import commands
-from discord.ext.commands import Bot, Cog, Context
+from discord.ext.commands import Cog, Context
 
+from heehawbot.managers.audio import AudioManager
 from heehawbot.utils import config
-
-YTDL_OPTS = {
-    "default_search": "ytsearch",
-    "format": "bestaudio/best",
-    "extract_flat": "in_playlist",
-}
-
-FFMPEG_OPTS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 
 guild_ids = config.get_config()["guilds"]
 
 
-class YoutubeVideo:
-    def __init__(self, url, user) -> None:
-        video = self._extract(url)
-        self.stream_url = video["formats"][0]["url"]
-        self.video_url = video["webpage_url"]
-        self.title = video["title"]
-        self.uploader = video["uploader"] if "uploader" in video else ""
-        self.thumbnail = video["thumbnail"] if "thumbnail" in video else None
-        self.user = user
-
-    def _extract(self, url):
-        with ytdl.YoutubeDL(YTDL_OPTS) as downloader:
-            info = downloader.extract_info(url, download=False)
-            if "_type" in info and info["_type"] == "playlist":
-                return self._extract(info["entries"][0]["url"])
-            else:
-                return info
-
-    def embed(self):
-        emb = Embed(title=self.title, description=self.uploader, url=self.video_url)
-        if self.thumbnail:
-            emb.set_thumbnail(url=self.thumbnail)
-        emb.set_footer(
-            text=f"Queued by {self.user.name}", icon_url=self.user.avatar.url
-        )
-        return emb
-
-
-class GuildMusicManager:
-    def __init__(self) -> None:
-        self.playlist = []
-        self.playing = None
-        self.volume = 1.0
-
-
-async def in_voice(ctx):
-    uv = ctx.author.voice
-    bv = ctx.guild.voice_client
-    if uv and bv and uv.channel and bv.channel and uv.channel == bv.channel:
-        return True
-    return False
-
-
 class Music(Cog):
-    def __init__(self, bot: Bot) -> None:
+    def __init__(self, bot) -> None:
         self.bot = bot
-        self.managers = {}
-
-    def _get_manager(self, guild) -> GuildMusicManager:
-        if guild.id in self.managers:
-            return self.managers[guild.id]
-        else:
-            self.managers[guild.id] = GuildMusicManager()
-            return self.managers[guild.id]
-
-    def _play(self, vc, manager, video):
-        manager.playing = video
-        source = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(video.stream_url, before_options=FFMPEG_OPTS),
-            volume=manager.volume,
-        )
-
-        def cleanup(err):
-            if len(manager.playlist) > 0:
-                next_song = manager.playlist.pop(0)
-                self._play(vc, manager, next_song)
-            else:
-                asyncio.run_coroutine_threadsafe(vc.disconnect(), self.bot.loop)
-
-        vc.play(source, after=cleanup)
+        self.manager: AudioManager = self.bot.audio_manager
 
     # @commands.command(aliases=["p"])
-    @commands.slash_command(guild_ids=guild_ids)
+    @commands.slash_command(guild_ids=guild_ids, description="play a song")
     @commands.guild_only()
-    async def play(self, ctx, *, url):
-        vc = ctx.guild.voice_client
-        manager = self._get_manager(ctx.guild)
-
-        if vc and vc.channel:
-            try:
-                video = YoutubeVideo(url, ctx.author)
-            except ytdl.DownloadError as e:
-                self.bot.logger.error(f"`{type(e).__name__}: {e}`")
-                return
-            manager.playlist.append(video)
-            msg = await ctx.respond(embed=video.embed())
-        else:
-            if ctx.author.voice is not None and ctx.author.voice.channel is not None:
-                chan = ctx.author.voice.channel
-                try:
-                    video = YoutubeVideo(url, ctx.author)
-                except ytdl.DownloadError as e:
-                    self.bot.logger.error(f"`{type(e).__name__}: {e}`")
-                    return
-                vc = await chan.connect()
-                self._play(vc, manager, video)
-                msg = await ctx.respond(embed=video.embed())
-            else:
-                self.bot.logger.error("User must be in a voice channel")
-                return
+    async def play(self, ctx: Context, *, query: Option(str, "Youtube search or url")):
+        embed = await self.manager.play(
+            ctx.guild.id, ctx.author.id, ctx.channel.id, query
+        )
+        msg = await ctx.respond(embed=embed)
+        await msg.delete_original_message(delay=5)
 
     # @commands.command(aliases=["n"])
-    @commands.slash_command(guild_ids=guild_ids)
-    @commands.check(in_voice)
+    @commands.slash_command(guild_ids=guild_ids, description="skip a song")
     @commands.guild_only()
     async def skip(self, ctx):
-        vc = ctx.guild.voice_client
-        vc.stop()
-        msg = await ctx.respond("Skipped song...")
+        await self.manager.skip(ctx.guild.id, ctx.author.id)
+        msg = await ctx.respond("skipped")
         await msg.delete_original_message(delay=1)
 
-    # @commands.command()
-    @commands.slash_command(guild_ids=guild_ids)
-    @commands.check(in_voice)
-    @commands.guild_only()
-    async def clear(self, ctx):
-        manager = self._get_manager(ctx.guild)
-        manager.playlist = []
-
-        vc = ctx.guild.voice_client
-        vc.stop()
-
-        msg = await ctx.respond("Cleared playlist...")
-        await msg.delete_original_message(delay=1)
-
-    # @commands.command()
-    @commands.slash_command(guild_ids=guild_ids)
+    @commands.slash_command(guild_ids=guild_ids, description="show song queue")
     @commands.guild_only()
     async def queue(self, ctx):
-        manager = self._get_manager(ctx.guild)
-        if len(manager.playlist) > 0:
-            msg = "Queue:\n"
-            for i, song in enumerate(manager.playlist):
-                msg += f"{i+1}: {song.title}\n"
-            await ctx.respond(msg)
+        q = await self.manager.queue(ctx.guild.id, ctx.author.id, ctx.channel.id)
+
+        # TODO: MAKE QUEUE EMBED OBJ
+        song_str = "Songs:\n"
+        if len(q) > 0:
+            for n in range(len(q)):
+                i = q[n]
+                url = i.get("url")
+                title = i.get("title")
+                if len(title) > 50:
+                    title = title[:47] + "..."
+                song_str += f"{n}. [{title}]({url})\n"
         else:
-            await ctx.respond("No songs in queue...")
+            song_str += "Nothing in queue!"
+        e = Embed(title="Coming Up", description=song_str)
+        await ctx.respond(embed=e, ephemeral=True)
 
 
 def setup(bot):

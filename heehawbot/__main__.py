@@ -12,8 +12,7 @@ coglist = [
     # "heehawbot.cogs.poll",
     "heehawbot.cogs.mtg",
     "heehawbot.cogs.osrs",
-    # "heehawbot.cogs.music",
-    "heehawbot.cogs.newmusic",
+    "heehawbot.cogs.music",
 ]
 
 bot = HeehawBot(command_prefix="-", intents=discord.Intents.all())
