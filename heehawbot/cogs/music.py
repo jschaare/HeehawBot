@@ -31,6 +31,13 @@ class Music(Cog):
         msg = await ctx.respond("skipped")
         await msg.delete_original_message(delay=1)
 
+    @commands.slash_command(guild_ids=guild_ids, description="clear queue")
+    @commands.guild_only()
+    async def clear(self, ctx):
+        await self.manager.clear(ctx.guild.id, ctx.author.id, ctx.channel.id)
+        msg = await ctx.respond("cleared queue")
+        await msg.delete_original_message(delay=1)
+
     @commands.slash_command(guild_ids=guild_ids, description="show song queue")
     @commands.guild_only()
     async def queue(self, ctx):

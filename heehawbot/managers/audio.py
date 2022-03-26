@@ -6,6 +6,7 @@ import discord
 from discord import Embed
 from functools import wraps
 
+# link is google webm not actual youtube link
 YTDL_OPTS = {
     "format": "webm[abr>0]/bestaudio/best",
     "prefer_ffmpeg": True,
@@ -172,29 +173,39 @@ class GuildPlayer:
 
             self.vclient = self.guild.voice_client
             if not self.vclient:
+                print("something goofed, cleaning up")
                 return await self.cleanup()
 
             if src and self.vclient:
+                print("playing")
                 self.vclient.play(src, after=self.play_finished)
                 await self.update_view_msg()
 
             await self.next.wait()
 
             if self.playlist.empty():
+                self.playing_last = self.playing_now
+                self.playing_now = None
                 await self.cleanup()
 
     async def update_view_msg(self):
-        if self.view_msg:
-            if self.playing_last:
-                await self.view_msg.edit(embed=self.playing_last.embed(), view=None)
-        await self.view.load()
+        print("updating view msg")
+        await self.cleanup_view_msg()
+
+        if self.view:
+            print("loading view")
+            await self.view.load()
+        print("sending view")
         self.view_msg = await self.tchan.send(
             embed=self.playing_now.embed(is_playing=True), view=self.view
         )
 
     async def cleanup_view_msg(self):
+        print("cleaning view msg")
         if self.view_msg:
-            await self.view_msg.delete()
+            if self.playing_last and self.view_msg:
+                print("editing view")
+                await self.view_msg.edit(embed=self.playing_last.embed(), view=None)
 
     async def put_song(self, query):
         try:
@@ -219,14 +230,6 @@ class GuildPlayer:
         return src
 
     async def get_queue(self):
-        """q = []
-        count = 0
-        for song in self.playlist_helper:
-            q.append({"title": song.title, "url": song.url})
-            count += 1
-            if count >= 10:
-                return q
-        return q"""
         return self.playlist_helper[:10]
 
 
