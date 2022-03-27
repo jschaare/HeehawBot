@@ -27,7 +27,7 @@ class Music(Cog):
     @commands.slash_command(guild_ids=guild_ids, description="skip a song")
     @commands.guild_only()
     async def skip(self, ctx):
-        await self.manager.skip(ctx.guild.id, ctx.author.id)
+        await self.manager.skip(ctx.guild.id, ctx.author.id, ctx.channel.id)
         msg = await ctx.respond("skipped")
         await msg.delete_original_message(delay=1)
 

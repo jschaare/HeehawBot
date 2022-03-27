@@ -30,6 +30,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         self.title = data.get("title")
         self.url = data.get("url")
+        self.webpage = data.get("webpage_url")
         self.uploader = data.get("uploader", "")
         self.thumbnail = data.get("thumbnail")
 
@@ -53,7 +54,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         else:
             colour = 0x0
         emb = Embed(
-            title=self.title, description=self.uploader, url=self.url, colour=colour
+            title=self.title, description=self.uploader, url=self.webpage, colour=colour
         )
         if self.thumbnail:
             emb.set_thumbnail(url=self.thumbnail)
@@ -94,7 +95,9 @@ class GuildPlayerView(discord.ui.View):
         )
 
     async def skip(self, button: GuildPlayerButton, interaction: discord.Interaction):
-        await self.manager.skip(interaction.guild_id, interaction.user.id)
+        await self.manager.skip(
+            interaction.guild_id, interaction.user.id, interaction.channel_id
+        )
 
     async def clear(self, button: GuildPlayerButton, interaction: discord.Interaction):
         await self.manager.clear(
@@ -183,28 +186,27 @@ class GuildPlayer:
 
             await self.next.wait()
 
-            if self.playlist.empty():
+            # TODO: maybe try and update play message when out of songs
+            """ if self.playlist.empty():
+                print("playlist empty")
                 self.playing_last = self.playing_now
                 self.playing_now = None
-                await self.cleanup()
+                print("some cleanup")
+                await self.cleanup_view_msg() """
 
     async def update_view_msg(self):
         print("updating view msg")
         await self.cleanup_view_msg()
 
         if self.view:
-            print("loading view")
             await self.view.load()
-        print("sending view")
         self.view_msg = await self.tchan.send(
             embed=self.playing_now.embed(is_playing=True), view=self.view
         )
 
     async def cleanup_view_msg(self):
-        print("cleaning view msg")
         if self.view_msg:
             if self.playing_last and self.view_msg:
-                print("editing view")
                 await self.view_msg.edit(embed=self.playing_last.embed(), view=None)
 
     async def put_song(self, query):
@@ -222,8 +224,13 @@ class GuildPlayer:
     async def get_song(self, has_timeout=True):
         src = None
         if has_timeout:
+            # timeout causes bot to die, not sure why lol
+            """
             async with timeout(300):
+                print("waiting")
                 src = await self.playlist.get()
+            """
+            src = await self.playlist.get()
         else:
             src = self.playlist.get_nowait()
         self.playlist_helper.pop(0)
@@ -231,6 +238,21 @@ class GuildPlayer:
 
     async def get_queue(self):
         return self.playlist_helper[:10]
+
+    async def clear_queue(self):
+        if self.vclient.is_playing():
+            self.vclient.stop()
+        try:
+            for _ in range(self.playlist.qsize()):
+                self.playlist.get_nowait()
+                self.playlist.task_done()
+        except asyncio.QueueEmpty:
+            pass
+        self.playlist_helper.clear()
+
+    async def skip(self):
+        if self.vclient.is_playing():
+            self.vclient.stop()
 
 
 class AudioManager:
@@ -301,17 +323,31 @@ class AudioManager:
             player = self.get_player(guild, tchannel)
             return await player.get_queue()
 
-    async def skip(self, guild_id, user_id):
+    async def skip(self, guild_id, user_id, tchannel_id):
         guild: discord.Guild = self.bot.get_guild(guild_id)
         if not guild:
+            return
+
+        member = guild.get_member(user_id)
+        if not member:
             return
 
         vclient = guild.voice_client
         if not vclient or not vclient.is_connected():
             return
 
-        if vclient.is_playing():
-            vclient.stop()
+        vchannel = member.voice.channel
+        if not vchannel:
+            return
+
+        tchannel = guild.get_channel(tchannel_id)
+        if not tchannel:
+            return
+
+        if isinstance(tchannel, discord.TextChannel):
+            player = self.get_player(guild, tchannel)
+            await player.skip()
+            return
 
     async def clear(self, guild_id, user_id, tchannel_id):
         guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -332,5 +368,5 @@ class AudioManager:
 
         if isinstance(tchannel, discord.TextChannel):
             player = self.get_player(guild, tchannel)
-            await player.cleanup()
+            await player.clear_queue()
             return
