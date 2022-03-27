@@ -42,7 +42,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
         )
 
         if "entries" in data:
-            # Takes the first item from a playlist
             data = data["entries"][0]
 
         filename = data["url"] if stream else ytdl.prepare_filename(data)
@@ -218,7 +217,7 @@ class GuildPlayer:
             self.bot.logger.error(f"`{type(e).__name__}: {e}`")
             return
         await self.playlist.put(ytdlsrc)
-        self.playlist_helper.append({"title": ytdlsrc.title, "url": ytdlsrc.url})
+        self.playlist_helper.append({"title": ytdlsrc.title, "url": ytdlsrc.webpage})
         return ytdlsrc
 
     async def get_song(self, has_timeout=True):
