@@ -3,6 +3,10 @@ from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import Bot, Cog, Context
 
+from heehawbot.utils import config
+
+guild_ids = config.get_config()["guilds"]
+
 
 class Poll(Cog):
     def __init__(self, bot: Bot) -> None:
@@ -23,7 +27,7 @@ class Poll(Cog):
             10: "🔟",
         }
 
-    @commands.command()
+    @commands.slash_command(guild_ids=guild_ids)
     async def poll(self, ctx: Context, info: str, *options):
         await ctx.message.delete()
 

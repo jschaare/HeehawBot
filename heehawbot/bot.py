@@ -1,6 +1,7 @@
 import datetime
 import logging
 from discord.ext import commands
+from heehawbot.managers.audio.manager import AudioManager
 from heehawbot.utils.logger import DiscordLogHandler
 
 
@@ -10,6 +11,7 @@ class HeehawBot(commands.Bot):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(DiscordLogHandler(self))
+        self.audio_manager = AudioManager(self)
 
     """
     def add_cog(self, cog):

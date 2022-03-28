@@ -1,4 +1,7 @@
 {
   "discord_token": "",
-  "log_channel": 000000000000
+  "log_channel": 000000000000,
+  "guilds": [
+    000000000000000000
+  ]
 }
