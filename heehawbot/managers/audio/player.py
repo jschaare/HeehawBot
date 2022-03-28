@@ -1,63 +1,17 @@
-from async_timeout import timeout
 import asyncio
-import subprocess
 import youtube_dl
 import discord
-from discord import Embed
-from functools import wraps
 
-# link is google webm not actual youtube link
+from ..audio.ytdlsource import YTDLSource
+from ..audio.queue import QueueEmbed
+
 YTDL_OPTS = {
     "format": "webm[abr>0]/bestaudio/best",
     "prefer_ffmpeg": True,
     "ignoreerrors": True,
     "default_search": "ytsearch",
-    "source_address": "0.0.0.0",  # ipv6 addresses cause issues sometimes
+    "source_address": "0.0.0.0",
 }
-
-FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-    "stderr": subprocess.PIPE,
-}
-
-
-class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=1.0):
-        super().__init__(source, volume)
-
-        self.data = data
-
-        self.title = data.get("title")
-        self.url = data.get("url")
-        self.webpage = data.get("webpage_url")
-        self.uploader = data.get("uploader", "")
-        self.thumbnail = data.get("thumbnail")
-
-    @classmethod
-    async def from_query(cls, ytdl, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(url, download=not stream)
-        )
-
-        if "entries" in data:
-            data = data["entries"][0]
-
-        filename = data["url"] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTS), data=data)
-
-    def embed(self, is_playing=False):
-        if is_playing:
-            colour = 0x00FF00
-        else:
-            colour = 0x0
-        emb = Embed(
-            title=self.title, description=self.uploader, url=self.webpage, colour=colour
-        )
-        if self.thumbnail:
-            emb.set_thumbnail(url=self.thumbnail)
-        return emb
 
 
 class GuildPlayerButton(discord.ui.Button):
@@ -107,20 +61,9 @@ class GuildPlayerView(discord.ui.View):
         q = await self.manager.queue(
             interaction.guild_id, interaction.user.id, interaction.channel_id
         )
-        # TODO: MAKE QUEUE EMBED OBJ
-        song_str = "Songs:\n"
-        if len(q) > 0:
-            for n in range(len(q)):
-                i = q[n]
-                url = i.get("url")
-                title = i.get("title")
-                if len(title) > 50:
-                    title = title[:47] + "..."
-                song_str += f"{n}. [{title}]({url})\n"
-        else:
-            song_str += "Nothing in queue!"
-        e = Embed(title="Coming Up", description=song_str)
-        await interaction.response.send_message(embed=e, ephemeral=True)
+        await interaction.response.send_message(
+            embed=QueueEmbed(q).embed(), ephemeral=True
+        )
 
 
 class GuildPlayer:
@@ -252,120 +195,3 @@ class GuildPlayer:
     async def skip(self):
         if self.vclient.is_playing():
             self.vclient.stop()
-
-
-class AudioManager:
-    def __init__(self, bot):
-        self.bot = bot
-        self.players = {}
-
-    def get_player(
-        self, guild: discord.Guild, channel: discord.TextChannel
-    ) -> GuildPlayer:
-        if guild.id in self.players:
-            return self.players[guild.id]
-
-        view = GuildPlayerView(self, guild)
-        player = GuildPlayer(self.bot, guild, channel, view)
-        self.players[guild.id] = player
-        return player
-
-    async def join(self, guild: discord.Guild, vchannel: discord.VoiceChannel):
-        vclient: discord.VoiceClient = guild.voice_client
-        try:
-            vclient = await vchannel.connect()
-        except discord.ClientException:
-            await vclient.move_to(vchannel)
-        return vclient
-
-    async def play(self, guild_id, user_id, tchannel_id, query):
-        # TODO: cleanup
-        guild: discord.Guild = self.bot.get_guild(guild_id)
-        if not guild:
-            return
-
-        member = guild.get_member(user_id)
-        if not member:
-            return
-
-        vchannel = member.voice.channel
-        if not vchannel:
-            return
-
-        vclient = await self.join(guild, vchannel)
-        if not vclient:
-            return
-
-        tchannel = guild.get_channel(tchannel_id)
-        if not tchannel:
-            return
-
-        if isinstance(tchannel, discord.TextChannel):
-            player = self.get_player(guild, tchannel)
-            song = await player.put_song(query)
-            return song.embed()
-
-    async def queue(self, guild_id, user_id, tchannel_id):
-        guild: discord.Guild = self.bot.get_guild(guild_id)
-        if not guild:
-            return
-
-        member = guild.get_member(user_id)
-        if not member:
-            return
-
-        tchannel = guild.get_channel(tchannel_id)
-        if not tchannel:
-            return
-
-        if isinstance(tchannel, discord.TextChannel):
-            player = self.get_player(guild, tchannel)
-            return await player.get_queue()
-
-    async def skip(self, guild_id, user_id, tchannel_id):
-        guild: discord.Guild = self.bot.get_guild(guild_id)
-        if not guild:
-            return
-
-        member = guild.get_member(user_id)
-        if not member:
-            return
-
-        vclient = guild.voice_client
-        if not vclient or not vclient.is_connected():
-            return
-
-        vchannel = member.voice.channel
-        if not vchannel:
-            return
-
-        tchannel = guild.get_channel(tchannel_id)
-        if not tchannel:
-            return
-
-        if isinstance(tchannel, discord.TextChannel):
-            player = self.get_player(guild, tchannel)
-            await player.skip()
-            return
-
-    async def clear(self, guild_id, user_id, tchannel_id):
-        guild: discord.Guild = self.bot.get_guild(guild_id)
-        if not guild:
-            return
-
-        member = guild.get_member(user_id)
-        if not member:
-            return
-
-        vchannel = member.voice.channel
-        if not vchannel:
-            return
-
-        tchannel = guild.get_channel(tchannel_id)
-        if not tchannel:
-            return
-
-        if isinstance(tchannel, discord.TextChannel):
-            player = self.get_player(guild, tchannel)
-            await player.clear_queue()
-            return

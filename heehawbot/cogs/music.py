@@ -1,8 +1,9 @@
-from discord import Embed, Option
+from discord import Option
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 
-from heehawbot.managers.audio import AudioManager
+from heehawbot.managers.audio.manager import AudioManager
+from heehawbot.managers.audio.queue import QueueEmbed
 from heehawbot.utils import config
 
 guild_ids = config.get_config()["guilds"]
@@ -43,20 +44,7 @@ class Music(Cog):
     async def queue(self, ctx):
         q = await self.manager.queue(ctx.guild.id, ctx.author.id, ctx.channel.id)
 
-        # TODO: MAKE QUEUE EMBED OBJ
-        song_str = "Songs:\n"
-        if len(q) > 0:
-            for n in range(len(q)):
-                i = q[n]
-                url = i.get("url")
-                title = i.get("title")
-                if len(title) > 50:
-                    title = title[:47] + "..."
-                song_str += f"{n}. [{title}]({url})\n"
-        else:
-            song_str += "Nothing in queue!"
-        e = Embed(title="Coming Up", description=song_str)
-        await ctx.respond(embed=e, ephemeral=True)
+        await ctx.respond(embed=QueueEmbed(q).embed(), ephemeral=True)
 
 
 def setup(bot):

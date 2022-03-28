@@ -1,7 +1,7 @@
 import datetime
 import logging
 from discord.ext import commands
-from heehawbot.managers.audio import AudioManager
+from heehawbot.managers.audio.manager import AudioManager
 from heehawbot.utils.logger import DiscordLogHandler
 
 

@@ -146,4 +146,6 @@ cython_debug/
 #
 .vscode/
 config.json
+config.json.test
+config.json.prod
 old/
