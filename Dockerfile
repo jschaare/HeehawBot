@@ -1,7 +1,7 @@
-FROM python:3.8.5-alpine
+FROM python:3.8.5-slim
 
-RUN apk update && apk upgrade
-RUN apk add --no-cache git make build-base linux-headers libffi-dev
+RUN apt-get -y update && apt-get -y upgrade
+RUN apt-get -y install git libffi-dev ffmpeg
 
 WORKDIR /heehawbot
 
