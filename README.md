@@ -1,30 +1,39 @@
 # HeehawBot
 
-## Running
-1. Copy config.json.example to config.json, and then add your tokens
-2. Create virtual environment and activate
-3. Install required packages with `pip install -r requirements.txt`
-4. Run the bot with `python -m heehawbot`
+Discord bot for a personal discord server.
+Implements things like audio playback and some commands for game information. Under development, used everyday and loved by many...
 
-## Docker
+## Installation
+
+### Basic
+```
+# Clone repo
+git clone git@github.com:jschaare/HeehawBot.git
+cd HeehawBot
+
+# Create virtual environment if you want
+python3 -m venv venv
+# Linux
+source venv/bin/activate
+# Windows
+source venv/Scripts/activate
+
+# Install packages 
+pip install -r requirements.txt
+
+# Add configs
+cp config.json.example config.json
+# ADD KEYS AND ENVIRONMENT INFO INTO config.json
+
+# Run bot
+python3 -m heehawbot
+```
+
+### Docker
 ```
 #Build and run
-docker-compose up -d --build
-
-#Check if running
-docker-compose ps
-
-#Shut down container
-docker-compose down
-
-#Check container logs
-docker-compose logs
+docker build -t hhbot . && docker run hhbot
 ```
 
-## To Do
-* Add new cogs
-    * Planetside 2
-    * Music player
-    * etc...
-* Hook into persistant DB for some cogs
-* Do more things
+## License
+HeehawBot uses an [MIT License](LICENSE)

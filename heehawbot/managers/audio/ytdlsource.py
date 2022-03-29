@@ -2,6 +2,7 @@ import asyncio
 import subprocess
 import discord
 from discord import Embed
+import youtube_dl
 
 FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -28,6 +29,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(
             None, lambda: ytdl.extract_info(url, download=not stream)
         )
+
+        if data is None:
+            raise youtube_dl.DownloadError("could not download")
 
         if "entries" in data:
             data = data["entries"][0]
