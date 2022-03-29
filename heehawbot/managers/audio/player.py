@@ -159,6 +159,8 @@ class GuildPlayer:
         except youtube_dl.DownloadError as e:
             self.bot.logger.error(f"`{type(e).__name__}: {e}`")
             return
+        if ytdlsrc is None:
+            return
         await self.playlist.put(ytdlsrc)
         self.playlist_helper.append({"title": ytdlsrc.title, "url": ytdlsrc.webpage})
         return ytdlsrc

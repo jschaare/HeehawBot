@@ -52,6 +52,8 @@ class AudioManager:
         if isinstance(tchannel, discord.TextChannel):
             player = self.get_player(guild, tchannel)
             song = await player.put_song(query)
+            if song is None:
+                return discord.Embed(description="Could not queue the song... Sorry!")
             return song.embed()
 
     async def queue(self, guild_id, user_id, tchannel_id):
