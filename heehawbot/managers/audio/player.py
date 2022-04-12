@@ -97,12 +97,7 @@ class GuildPlayer:
 
     async def cleanup(self):
         print("cleaning up")
-        await self.cleanup_view_msg()
-        self.vclient.stop()
-        for _ in range(self.playlist.qsize()):
-            self.playlist.get_nowait()
-            self.playlist.task_done()
-        self.playlist_helper.clear()
+        await self.clear_queue()
         self.vclient.cleanup()
         await self.vclient.disconnect()
 
@@ -151,10 +146,10 @@ class GuildPlayer:
             if self.playing_last and self.view_msg:
                 await self.view_msg.edit(embed=self.playing_last.embed(), view=None)
 
-    async def put_song(self, query):
+    async def put_song(self, query, user: discord.Member):
         try:
             ytdlsrc = await YTDLSource.from_query(
-                self.ytdl, query, loop=self.loop, stream=True
+                self.ytdl, query, loop=self.loop, stream=True, user=user
             )
         except youtube_dl.DownloadError as e:
             self.bot.logger.error(f"`{type(e).__name__}: {e}`")
@@ -184,8 +179,7 @@ class GuildPlayer:
         return self.playlist_helper[:10]
 
     async def clear_queue(self):
-        if self.vclient.is_playing():
-            self.vclient.stop()
+        await self.skip()
         try:
             for _ in range(self.playlist.qsize()):
                 self.playlist.get_nowait()
@@ -196,4 +190,7 @@ class GuildPlayer:
 
     async def skip(self):
         if self.vclient.is_playing():
+            self.playing_last = self.playing_now
+            self.playing_now = None
+            await self.cleanup_view_msg()
             self.vclient.stop()
