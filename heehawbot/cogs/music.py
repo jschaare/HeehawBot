@@ -1,6 +1,6 @@
 from discord import Option
 from discord.ext import commands
-from discord.ext.commands import Cog, Context
+from discord.ext.commands import Cog
 
 from heehawbot.managers.audio.manager import AudioManager
 from heehawbot.managers.audio.queue import QueueEmbed
@@ -17,7 +17,7 @@ class Music(Cog):
     # @commands.command(aliases=["p"])
     @commands.slash_command(guild_ids=guild_ids, description="play a song")
     @commands.guild_only()
-    async def play(self, ctx: Context, *, query: Option(str, "Youtube search or url")):
+    async def play(self, ctx, *, query: Option(str, "Youtube search or url")):
         embed = await self.manager.play(
             ctx.guild.id, ctx.author.id, ctx.channel.id, query
         )
@@ -45,6 +45,13 @@ class Music(Cog):
         q = await self.manager.queue(ctx.guild.id, ctx.author.id, ctx.channel.id)
 
         await ctx.respond(embed=QueueEmbed(q).embed(), ephemeral=True)
+
+    @commands.slash_command(guild_ids=guild_ids, description="kill music player")
+    @commands.guild_only()
+    async def kill(self, ctx):
+        await self.manager.kill_player(ctx.guild.id, ctx.author.id, ctx.channel.id)
+        msg = await ctx.respond("killed music player")
+        await msg.delete_original_message(delay=1)
 
 
 def setup(bot):

@@ -12,7 +12,7 @@ FFMPEG_OPTS = {
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=1.0):
+    def __init__(self, source, *, data, volume=1.0, user=None):
         super().__init__(source, volume)
 
         self.data = data
@@ -22,9 +22,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.webpage = data.get("webpage_url")
         self.uploader = data.get("uploader", "")
         self.thumbnail = data.get("thumbnail")
+        self.user = user
 
     @classmethod
-    async def from_query(cls, ytdl, url, *, loop=None, stream=False):
+    async def from_query(cls, ytdl, url, *, loop=None, stream=False, user: discord.Member=None):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(
             None, lambda: ytdl.extract_info(url, download=not stream)
@@ -37,7 +38,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data["entries"][0]
 
         filename = data["url"] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTS), data=data)
+        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTS), data=data, user=user)
 
     def embed(self, is_playing=False):
         if is_playing:
@@ -49,4 +50,8 @@ class YTDLSource(discord.PCMVolumeTransformer):
         )
         if self.thumbnail:
             emb.set_thumbnail(url=self.thumbnail)
+        if self.user:
+            emb.set_footer(
+                text=f"Queued by {self.user.display_name}", icon_url=self.user.display_avatar.url
+            )
         return emb

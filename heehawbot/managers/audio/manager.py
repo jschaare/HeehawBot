@@ -51,7 +51,7 @@ class AudioManager:
 
         if isinstance(tchannel, discord.TextChannel):
             player = self.get_player(guild, tchannel)
-            song = await player.put_song(query)
+            song = await player.put_song(query, member)
             if song is None:
                 return discord.Embed(description="Could not queue the song... Sorry!")
             return song.embed()
@@ -120,3 +120,26 @@ class AudioManager:
             player = self.get_player(guild, tchannel)
             await player.clear_queue()
             return
+
+    async def kill_player(self, guild_id, user_id, tchannel_id):
+        guild: discord.Guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return
+
+        member = guild.get_member(user_id)
+        if not member:
+            return
+
+        vchannel = member.voice.channel
+        if not vchannel:
+            return
+
+        tchannel = guild.get_channel(tchannel_id)
+        if not tchannel:
+            return
+
+        if isinstance(tchannel, discord.TextChannel):
+            player = self.get_player(guild, tchannel)
+            await player.cleanup()
+            player = None
+            del self.players[guild_id]
